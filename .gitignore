@@ -1,0 +1,5 @@
+__pycache__/
+.venv/
+*.txt
+chroma_data/
+.env
