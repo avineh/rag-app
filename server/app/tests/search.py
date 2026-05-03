@@ -1,6 +1,8 @@
 import chromadb
 from sentence_transformers import SentenceTransformer
 
+#בדיקת חיפוש וקטורי - האם אנחנו באמת מוצאים את מה שזרקנו קודם?
+
 # טעינת המודל (חייב להיות אותו מודל מה-Seed!)
 model = SentenceTransformer('all-MiniLM-L6-v2')
 

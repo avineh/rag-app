@@ -1,6 +1,9 @@
 import chromadb
 from sentence_transformers import SentenceTransformer
-import google.generativeai as genai
+from google import genai
+
+#מימוש RAG ראשוני ובסיסי
+# קובץ שמדגים איך כל החלקים מתחברים יחד – חיפוש ב-DB + שאלת ה-LLM עם הקונטקסט שמצאנו    
 
 # 1. הגדרת ה-AI (תצטרך להוציא מפתח API חינמי של Gemini)
 genai.configure(api_key="AIzaSyBraRAcRVSy9JM5l3WA2xrW0i7jYiqOvlU")

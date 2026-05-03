@@ -1,5 +1,8 @@
 import chromadb
 
+#קובץ לבדיקת תוכן ה-DB
+# # בדיקה פשוטה כדי לראות מה יש לנו ב-DB - האם הנתונים שהזרקנו באמת שם?
+
 # 1. חיבור לאותה תיקייה
 client = chromadb.PersistentClient(path="./chroma_data")
 
