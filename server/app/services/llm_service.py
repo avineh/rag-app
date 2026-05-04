@@ -15,8 +15,9 @@ class LLMService:
             if "models/gemini-flash-lite-latest" in available:
                 return "gemini-flash-lite-latest"
             return available[0].replace("models/", "") if available else "gemini-1.5-flash"
-        except:
-            return "gemini-1.5-flash"
+        except Exception as e:
+            print(f"DEBUG: Error listing models: {str(e)}") # זה ידפיס את השגיאה המדויקת
+            return "gemini-flash-lite-latest" # נשנה גם את הדיפולט למשהו יציב יותר
 
     def generate_answer(self, prompt: str):
         response = self.client.models.generate_content(

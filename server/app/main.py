@@ -1,34 +1,45 @@
-from fastapi import FastAPI, UploadFile, File, Query
-from app.services.llm_service import llm_service
-# כאן נוסיף בהמשך את ה-vector_service
+from fastapi import FastAPI, File, Query, HTTPException, UploadFile
 from app.services.vector_service import vector_service
+from app.services.agent import agent  # הסוכן החדש שיצרנו
+from app.core.config import settings
 
+app = FastAPI(title="RAG Chat App with PydanticAI")
 
-app = FastAPI(title="RAG Chat App")
-
-
-# עדכון ה-Ask לתמיכה בפרויקט
+# עדכון ה-Ask לתמיכה בפרויקט ושימוש בסוכן החדש (שכבר כולל את היכולת לחפש ב-VectorDB)
 @app.get("/ask")
-def ask_ai(question: str, project: str = Query(..., description="שם הפרויקט לחיפוש")):
-    results = vector_service.search(question, project)
+async def ask_ai(question: str, project: str = Query(None)):
+    # 1. קביעת הפרויקט (דיפולט אם לא נשלח)
+    target_project = project or settings.COLLECTION_NAME # "my_documents"
     
-    if not results or not results['documents'][0]:
-        return {"answer": "לא נמצא מידע בפרויקט זה."}
+    try:
+        # 2. הרצת הסוכן - הוא כבר יקרא ל-Tool של החיפוש לבד!
+        result = await agent.run(question, deps=target_project)
+        return {"answer": result.output}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    context_text = "\n---\n".join(results['documents'][0])
-    
-    # ב: הפניה שקופה למקורות כולל שם הקובץ והסוג
-    sources = []
-    for meta in results['metadatas'][0]:
-        sources.append(f"Source: {meta['source']} ({meta['type']})")
+# --- תשתית לניהול פרויקטים ---
+# החזרת רשימת פרויקטים קיימים
+@app.get("/api/projects")
+def list_projects():
+    return {"projects": vector_service.list_projects()}
 
-    prompt = f"Context:\n{context_text}\n\nQuestion: {question}\nAnswer:"
-    answer = llm_service.generate_answer(prompt)
-    
-    return {"answer": answer, "sources": list(set(sources))}
+# מחיקת פרויקט שלם
+@app.delete("/api/projects/{project_name}")
+def delete_project(project_name: str):
+    success = vector_service.delete_project(project_name)
+    return {"message": "Deleted"} if success else {"error": "Not found"}
 
+# איפוס פרויקט (מחיקת תוכן בלי למחוק את הפרויקט עצמו)
+@app.post("/api/projects/{project_name}/reset")
+def reset_project(project_name: str):
+    """מוחק את המידע (context) מבלי למחוק את הפרויקט עצמו"""
+    # פשוט מוחקים ויוצרים מחדש - זו הדרך הכי נקיה ב-Chroma
+    vector_service.delete_project(project_name)
+    vector_service.client.get_or_create_collection(name=project_name)
+    return {"message": f"Context for {project_name} cleared."}
 
-# העלאת קבצים לפרויקט
+# העלאת קבצים לקונטקסט של הפרויקט
 @app.post("/api/files/upload")
 async def upload_file(project: str, file: UploadFile = File(...)):
     content = await file.read()
@@ -36,9 +47,10 @@ async def upload_file(project: str, file: UploadFile = File(...)):
     num_chunks = vector_service.ingest_data(text, file.filename, project, source_type="file")
     return {"message": f"File '{file.filename}' ingested into project '{project}'"}
 
-
-# א+ג: העלאת טקסט חופשי לפרויקט
+# העלאת טקסט חופשי לפרויקט
 @app.post("/api/ingest/text")
 async def ingest_text(content: str, project: str, source_label: str = "manual_entry"):
     num_chunks = vector_service.ingest_data(content, source_label, project, source_type="text")
     return {"message": f"Added {num_chunks} chunks to project '{project}'"}
+
+
