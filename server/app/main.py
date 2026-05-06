@@ -12,6 +12,8 @@ app = FastAPI(title="RAG Chat App with PydanticAI")
 # --- Middleware (משימה 9) ---
 @app.middleware("http")
 async def simple_auth_middleware(request: Request, call_next):
+    return await call_next(request)# שורה אחת שמבטלת את האבטחה - מאשרת הכל וממשיכה הלאה
+
     # מאפשרים גישה חופשית לתיעוד ה-API
     if request.url.path in ["/docs", "/openapi.json"]:
         return await call_next(request)

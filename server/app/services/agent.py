@@ -1,34 +1,20 @@
-import os
-from dotenv import load_dotenv # 1. ייבוא הפונקציה
 from pydantic_ai import Agent, RunContext
 from app.services.vector_service import vector_service
 from app.services.llm_service import llm_service
+from app.core.config import settings # ייבוא ההגדרות המרכזי[cite: 3]
 from pydantic import BaseModel
-
-# 2. טעינת ה-env לזיכרון המערכת באופן אוטומטי
-load_dotenv()
 
 # מבנה נתונים לתוצאת חיפוש
 class SearchResult(BaseModel):
     content: str
     source: str
 
-# שליפת שם המודל דרך השירות שכבר עבר אופטימיזציה (Caching)
-model_name = llm_service._get_best_model()
+model_instance = llm_service._get_best_model()
 
-# הבטחת פורמט השם עבור PydanticAI
-if not model_name.startswith('google-gla:'):
-    model_name = f'google-gla:{model_name}'
-
-# הגדרת הסוכן
 agent = Agent(
-    model_name,
-    deps_type=str,
-    system_prompt=(
-        "אתה עוזר מקצועי המבוסס על מסמכי פרויקט. "
-        "השתמש בכלי החיפוש כדי למצוא הקשר רלוונטי לפני מתן תשובה. "
-        "אם המידע לא נמצא במסמכים, ענה על סמך הידע הכללי שלך אך ציין שזה לא מהמסמכים."
-    ),
+    model_instance, 
+    deps_type=str, 
+    system_prompt=settings.SYSTEM_PROMPT
 )
 
 @agent.tool
@@ -38,9 +24,11 @@ async def search_project_docs(ctx: RunContext[str], query: str) -> list[SearchRe
     """
     try:
         project_name = ctx.deps  
-        results = vector_service.search(query, project_name)
         
-        # סעיף 3: הגנה מפני תוצאות ריקות או שגיאות בחיפוש
+        print(f"DEBUG: Searching for '{query}' in project '{project_name}'") #####
+        results = vector_service.search(query, project_name)
+        print(f"DEBUG: Found {len(results.get('documents', [[]])[0])} results") #####
+        
         if not results or not results.get('documents') or not results['documents'][0]:
             return []
             
@@ -55,4 +43,4 @@ async def search_project_docs(ctx: RunContext[str], query: str) -> list[SearchRe
     except Exception as e:
         print(f"Error in search_project_docs: {e}")
         return []
-    
+        
