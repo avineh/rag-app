@@ -14,7 +14,7 @@ model_instance = llm_service._get_best_model()
 agent = Agent(
     model_instance, 
     deps_type=str, 
-    system_prompt=settings.SYSTEM_PROMPT
+    system_prompt=settings.DEFAULT_PROMPT
 )
 
 @agent.tool

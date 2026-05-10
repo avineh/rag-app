@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     COLLECTION_NAME: str = "my_documents"
     API_TOKEN: str = "my_secret_token_123" 
     
-    SYSTEM_PROMPT: str = """
+    DEFAULT_PROMPT: str = """
     אתה עוזר מחקר אסיסטנט המבוסס על RAG.
     """
 
