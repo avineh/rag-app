@@ -7,7 +7,7 @@ class LLMService:
         self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
         self._cached_model = None
         #self.model_name = self._get_best_model()
-
+        
     def _get_best_model(self):
         if self._cached_model:
             return self._cached_model
@@ -36,5 +36,13 @@ class LLMService:
             contents=prompt
         )
         return response.text
+    
+    def get_models(self):
+        try:
+            models = self.client.models.list()
+            return [m.name.replace("models/", "") for m in models]
+        except Exception as e:
+            print(f"DEBUG: Error listing models: {str(e)}")
+            return []
 
 llm_service = LLMService()

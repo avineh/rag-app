@@ -5,16 +5,10 @@ from app.core.config import settings
 
 class VectorService:
     def __init__(self):
-        # חיבור ל-ChromaDB
-        self.client = chromadb.PersistentClient(path=settings.CHROMA_PATH)
-        # יצירת קולקשן ברירת מחדל (Sandbox)
-        self.collection = self.client.get_or_create_collection(name=settings.COLLECTION_NAME)
-        
-        # מודל ה-Embeddings (רץ מקומית)
-        self.embed_model = SentenceTransformer('all-MiniLM-L6-v2')
-        
-        # כלי לפירוק טקסט
-        self.text_splitter = RecursiveCharacterTextSplitter(
+        self.client = chromadb.PersistentClient(path=settings.CHROMA_PATH) # חיבור ל-ChromaDB
+        self.collection = self.client.get_or_create_collection(name=settings.COLLECTION_NAME) # יצירת קולקשן ברירת מחדל (Sandbox)
+        self.embed_model = SentenceTransformer('all-MiniLM-L6-v2') # מודל ה-Embeddings (רץ מקומית)
+        self.text_splitter = RecursiveCharacterTextSplitter( # כלי לפירוק טקסטים לחתיכות קטנות יותר
             chunk_size=1000,
             chunk_overlap=100,
             separators=["\n\n", "\n", " ", ""]
@@ -34,26 +28,25 @@ class VectorService:
             print(f"Error deleting collection {project_name}: {e}")
             return False
 
+    # פונקציה שמבצעת את כל תהליך ה-ingest: חיתוך הטקסט, וקטוריזציה ושמירה ב-ChromaDB תחת שם הפרויקט המתאים. 
+    # בנוסף, היא מוסיפה מטא-דאטה עשיר לכל חתיכה של טקסט, כולל שם המקור, סוגו, שם הפרויקט ואינדקס החתיכה בתוך המקור, 
+    # כדי לאפשר שליפה מדויקת יותר בעת החיפוש. הפונקציה מחזירה את מספר החתיכות שנוצרו מהטקסט שהועלה.
     def ingest_data(self, content: str, source_name: str, project_name: str, source_type: str = "file"):
-        """חיתוך, וקטוריזציה ושמירה לפי שם פרויקט"""
         collection = self.client.get_or_create_collection(name=project_name)
-        
         chunks = self.text_splitter.split_text(content)
-        ids = [f"{source_name}_{source_type}_{i}" for i in range(len(chunks))]
         
-        metadatas = [{
-            "source": source_name, 
-            "type": source_type,
-            "project": project_name,
-            "chunk_index": i
-        } for i in range(len(chunks))]
+        ids = [f"{source_name}_{source_type}_{i}" 
+            for i in range(len(chunks))] # יצירת מזהים ייחודיים לכל חתיכה של טקסט, כולל שם המקור והסוג שלו
+
+        metadatas = [{"source": source_name, "type": source_type, "project": project_name, "chunk_index": i}
+            for i in range(len(chunks))] # יצירת מטא-דאטה עשיר לכל חתיכה, כולל שם המקור, סוגו, שם הפרויקט ואינדקס החתיכה בתוך המקור 
         
         embeddings = self.embed_model.encode(chunks).tolist()
         collection.add(ids=ids, embeddings=embeddings, documents=chunks, metadatas=metadatas)
         return len(chunks)
     
+    # פונקציה שמחזירה את רשימת הקבצים/מקורות הייחודיים שקיימים בפרויקט מסוים, על בסיס שדה ה-'source' שהגדרנו במטא-דאטה של כל חתיכה בעת ה-ingest
     def get_project_files(self, project_name: str):
-        """מחזירה רשימת קבצים ייחודיים שקיימים בפרויקט"""
         try:
             collection = self.client.get_collection(name=project_name)
             # שליפת כל המטא-דאטה מהפרויקט
@@ -68,8 +61,8 @@ class VectorService:
         except Exception:
             return []
 
-    def search(self, query: str, project_name: str, n_results: int = 3):
-        """חיפוש בתוך פרויקט ספציפי"""
+    # פונקציית חיפוש בתוך פרויקט ספציפי, מחזירה את התוצאות הכי רלוונטיות לפי השאילתה שהתקבלה    
+    def search(self, query: str, project_name: str, n_results: int = 3): 
         try:
             collection = self.client.get_collection(name=project_name)
             query_embedding = self.embed_model.encode([query]).tolist()

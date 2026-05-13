@@ -7,6 +7,7 @@ from app.services.vector_service import vector_service
 from app.services.agent import agent
 from app.core.config import settings
 from pydantic_ai.messages import ModelMessage
+from app.services.llm_service import llm_service
 
 app = FastAPI(title="RAG Chat App with PydanticAI")
 
@@ -46,7 +47,8 @@ async def ask(
     question: str, 
     project: str, 
     session_id: str, 
-    system_prompt: str = None 
+    system_prompt: str = None,
+    user_model: str = None 
 ):
     # 1. לוגיקת ברירת מחדל לפרומפט ופרויקט
     actual_prompt = system_prompt or settings.DEFAULT_PROMPT
@@ -62,7 +64,8 @@ async def ask(
         async with agent.run_stream(
             question, 
             deps=target_project, 
-            message_history=chat_histories[session_id]
+            message_history=chat_histories[session_id],
+            model=user_model if user_model else llm_service._get_best_model()
         ) as result:
             
             async for chunk in result.stream_text(delta=True):
@@ -141,7 +144,7 @@ def get_project_sources(project_name: str):
         results = collection.get(include=['metadatas'])
         
         # חילוץ שמות מקורות ייחודיים מתוך ה-metadata
-        sources = set()
+        sources = set() # שימוש ב-set כדי להבטיח ייחודיות   
         for meta in results['metadatas']:
             if 'source' in meta:
                 sources.add(meta['source'])
@@ -160,3 +163,11 @@ def delete_specific_source(project_name: str, source_name: str):
         return {"message": f"Source '{source_name}' deleted successfully."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get("/api/models")
+def get_models():
+    try:
+        return llm_service.get_models()
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) 

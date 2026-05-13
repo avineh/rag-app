@@ -1,10 +1,12 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, use } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 function App() {
   const [projects, setProjects] = useState([]);
+  const [availableModels, setAvailableModels] = useState([]); // שמירת רשימת המודלים הזמינים 
+  const [selectedModel, setSelectedModel] = useState(""); // המודל הנבחר ע"י המשתמש 
   const [selectedProject, setSelectedProject] = useState("");
   const [question, setQuestion] = useState("");
   const [chatHistory, setChatHistory] = useState([]);
@@ -34,7 +36,24 @@ function App() {
   } finally {
     setLoading(false);
   }
-  };
+};
+
+const fetchModels = async () => {
+  try {
+    // שימוש ב-Backticks וכתובת נכונה
+    const res = await axios.get(`http://127.0.0.1:8000/api/models`);
+    
+    // בשרת החזרנו ליסט ישיר, לכן res.data הוא המערך
+    setAvailableModels(res.data);
+    
+    // הגדרת מודל ברירת מחדל אם נבחר מודל ראשון
+    if (res.data.length > 0 && !selectedModel) {
+      setSelectedModel(res.data[0]);
+    }
+  } catch (err) {
+    console.error("Error fetching models", err);
+  }
+};
 
   // יצירת פרויקט חדש
 const createProject = async () => {
@@ -78,8 +97,9 @@ const resetCurrentProject = async () => {
   };
 
   useEffect(() => {
-    fetchProjects();
-  }, []);
+  fetchProjects();
+  fetchModels(); // טעינת המודלים פעם אחת כשהאפליקציה עולה
+}, []);
 
   useEffect(() => {
     scrollToBottom();
@@ -107,8 +127,8 @@ const askQuestion = async () => {
 
   try {
     const response = await fetch(
-      `http://127.0.0.1:8000/ask?question=${encodeURIComponent(currentQ)}&project=${selectedProject}&session_id=user_1&system_prompt=${encodeURIComponent(systemPrompt)}`
-    );
+      `http://127.0.0.1:8000/ask?question=${encodeURIComponent(currentQ)}&project=${selectedProject}&session_id=user_1&system_prompt=${encodeURIComponent(systemPrompt)}&user_model=${selectedModel}`
+);
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -178,6 +198,18 @@ const deleteSource = async (sourceName) => {
         
         <div className="space-y-4">
           <div>
+            <div className="mb-2">
+              <label className="block text-[10px] uppercase tracking-widest text-slate-500 mb-1 font-bold">מודל שפה</label>
+              <select 
+                className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-sm outline-none focus:ring-1 focus:ring-blue-500"
+                value={selectedModel} 
+                onChange={(e) => setSelectedModel(e.target.value)}
+              >
+                {availableModels.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+
+
             <label className="block text-[10px] uppercase tracking-widest text-slate-500 mb-2 font-bold">ניהול פרויקטים</label>
             <div className="flex gap-2 mb-2">
               <select 
