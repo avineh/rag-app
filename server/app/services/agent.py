@@ -9,7 +9,7 @@ class SearchResult(BaseModel):
     content: str
     source: str
 
-model_instance = llm_service._get_best_model()
+model_instance = llm_service.DEFAULT_MODEL
 
 agent = Agent(
     model_instance, 

@@ -70,4 +70,14 @@ class VectorService:
         except Exception:
             return None
 
+    # פונקציה שמאפשרת לשנות את שם הפרויקט (הקולקשן) ב-ChromaDB, כולל טיפול בשגיאות במידה והפרויקט הישן לא קיים או שהשם החדש כבר תפוס            
+    def rename_project(self, old_name: str, new_name: str):
+        try:
+            collection = self.client.get_collection(name=old_name)
+            collection.modify(name=new_name)
+            return True
+        except Exception as e:
+            print(f"Error renaming project: {e}")
+            return False
+
 vector_service = VectorService()

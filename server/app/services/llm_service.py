@@ -3,46 +3,38 @@ from app.core.config import settings
 
 class LLMService:
 
+    # רשימת המודלים הנתמכים בתוכנה שבדקנו ועובדים עם RAG ו-Tools
+    SUPPORTED_MODELS = {
+        # "gemini-2.5-flash": "Gemini 2.5 Flash (מהיר ומומלץ)",
+        # "gemini-2.5-pro": "Gemini 2.5 Pro (חזק ומדויק)",
+        # "gemini-1.5-flash": "Gemini 1.5 Flash (גרסה יציבה)",
+        # "gemini-1.5-pro": "Gemini 1.5 Pro (למשימות מורכבות)"
+
+        "gemini-2.5-flash": "Gemini 2.5 Flash (מהיר ומומלץ)",
+        "gemini-flash-latest": "Gemini Flash Latest",
+        "gemini-3-flash-preview": "Gemini 3 Flash Preview",
+        "gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash Lite Preview"
+    }
+    
+    # מודל ברירת המחדל למקרה שלא נבחר מודל
+    DEFAULT_MODEL = "gemini-2.5-flash"
+
     def __init__(self):
         self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        self._cached_model = None
-        #self.model_name = self._get_best_model()
-        
-    def _get_best_model(self):
-        if self._cached_model:
-            return self._cached_model
-        
-        try:
-            models = self.client.models.list() #Fetching best model from Google API...
-            available = [m.name for m in models if 'flash' in m.name.lower()]
-            
-            if "models/gemini-flash-lite-latest" in available:
-                self._cached_model = "gemini-flash-lite-latest"
-            else:
-                self._cached_model = available[0].replace("models/", "") if available else "gemini-1.5-flash"
-            
-            return self._cached_model
-
-        except Exception as e:
-            print(f"DEBUG: Error listing models: {str(e)}") # זה ידפיס את השגיאה המדויקת
-            return "gemini-flash-lite-latest" # נשנה גם את הדיפולט למשהו יציב יותר
 
     def generate_answer(self, prompt: str):
-        # משתמשים בפונקציה שבודקת אם יש Cache
-        current_model = self._get_best_model()
-        
+        # שימוש במודל הדיפולטיבי עבור משימות פנימיות כמו יצירת כותרות
         response = self.client.models.generate_content(
-            model=current_model,
+            model=self.DEFAULT_MODEL,
             contents=prompt
         )
         return response.text
     
     def get_models(self):
-        try:
-            models = self.client.models.list()
-            return [m.name.replace("models/", "") for m in models]
-        except Exception as e:
-            print(f"DEBUG: Error listing models: {str(e)}")
-            return []
+        # return [
+        #     {"id": model_id, "name": name} 
+        #     for model_id, name in self.SUPPORTED_MODELS.items()
+        # ]
+        return list(self.SUPPORTED_MODELS.keys())
 
 llm_service = LLMService()
