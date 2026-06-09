@@ -20,8 +20,8 @@ import datetime
 from pymongo import MongoClient
 import certifi
 
-#MONGO_URI = "mongodb+srv://avineh_db_user:ZO8Yb89m69do3sdp@raggapp-cluster.sdrgbxh.mongodb.net/?retryWrites=true&w=majority"
-MONGO_URI = "mongodb://localhost:27017/"
+MONGO_URI = "mongodb+srv://avineh_db_user:ZO8Yb89m69do3sdp@raggapp-cluster.sdrgbxh.mongodb.net/?retryWrites=true&w=majority"
+#MONGO_URI = "mongodb://localhost:27017/"
 
 client = MongoClient(
     MONGO_URI, 
@@ -59,15 +59,13 @@ app.add_middleware(
 )
 
 # מאגר זכרון זמני להיסטוריית השיחות
-chat_histories: Dict[str, List[ModelMessage]] = {}
+chat_histories: Dict[str, List[dict]] = {}
 
 # --- Endpoints ---
-
-@app.get("/ask")
 @app.get("/ask")
 async def ask(question: str, project: str, session_id: str, system_prompt: str = None, user_model: str = None):
     # 1. לוגיקת ברירת מחדל
-    actual_prompt = system_prompt or settings.DEFAULT_PROMPT
+    actual_prompt = settings.DEFAULT_PROMPT #system_prompt
     target_project = project or settings.COLLECTION_NAME
     
     # 2. שליפת היסטוריה ממונגו
@@ -98,8 +96,21 @@ async def ask(question: str, project: str, session_id: str, system_prompt: str =
     # 4. שמירת שאלת המשתמש ב-MongoDB מיד
     save_chat_message(project, "user", question, session_id)
 
-    # 5. בחירת המודל מתוך הרשימה הלבנה
-    selected_model = user_model if user_model in llm_service.SUPPORTED_MODELS else llm_service.DEFAULT_MODEL
+    # 5. בחירת המודל מתוך הרשימה הנתמכת (ומוודאים שהוא מוגדר בסביבה)
+    selected_model = llm_service.DEFAULT_MODEL
+    if user_model:
+        model_info = next((m for m in llm_service.get_models() if m["id"] == user_model), None)
+        if not model_info:
+            raise HTTPException(status_code=400, detail=f"Unknown model requested: {user_model}")
+        if not model_info.get("configured"):
+            available = [m["id"] for m in llm_service.get_models() if m.get("configured")]
+            raise HTTPException(status_code=400, detail=f"Model '{user_model}' is not configured on server. Available: {available}")
+        selected_model = user_model
+    # Pre-validate model availability for known providers (e.g., Groq)
+    try:
+        llm_service.validate_model(selected_model)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
     
     async def stream_generator():
         full_response = ""

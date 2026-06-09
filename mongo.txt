@@ -1,0 +1,4 @@
+mongo-user and password:
+
+Username avineh_db_user
+Password ZO8Yb89m69do3sdp

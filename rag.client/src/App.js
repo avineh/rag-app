@@ -30,7 +30,11 @@ function App() {
     try {
       const res = await axios.get(`http://127.0.0.1:8000/api/models`);
       setAvailableModels(res.data);
-      if (res.data.length > 0 && !selectedModel) setSelectedModel(res.data[0]);
+      // Set first available/configured model as default
+      if (res.data.length > 0 && !selectedModel) {
+        const defaultModel = res.data.find(m => m.configured) || res.data[0];
+        setSelectedModel(defaultModel.id);
+      }
     } catch (err) { console.error("Error fetching models", err); }
   };
 
@@ -201,7 +205,15 @@ function App() {
               value={selectedModel} 
               onChange={(e) => setSelectedModel(e.target.value)}
             >
-              {availableModels.map(m => <option key={m} value={m}>{m}</option>)}
+              {availableModels.map(m => (
+                <option 
+                  key={m.id} 
+                  value={m.id}
+                  disabled={!m.configured}
+                >
+                  {m.name} {m.configured ? '' : '(Not configured)'}
+                </option>
+              ))}
             </select>
           </div>
           <div>

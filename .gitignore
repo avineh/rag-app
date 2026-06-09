@@ -1,5 +1,19 @@
-__pycache__/
-.venv/
-*.txt
-chroma_data/
+# Node
+node_modules/
+
+# Sensitive info
 .env
+
+# Large binaries and setup files
+*.exe
+*.msi
+*.log
+
+# Environment and Data
+.venv/
+chroma_data/
+__pycache__/
+*.pyc
+
+# Environment / installment files / tools
+setup env rag-app/

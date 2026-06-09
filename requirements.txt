@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+pydantic-settings
+google-genai
+chromadb
+sentence-transformers
+langchain-text-splitters
+pydantic-ai
+pymupdf
+python-docx
+pymongo certifi
+openai
+anthropic
+requests
